@@ -1,0 +1,9 @@
+.font_size(@font) {
+    font-size: @font;
+    [data-dpr=2] & {
+        font-size: @font * 2;
+    }
+    [data-dpr=3] & {
+        font-size: @font * 3;
+    }
+}
