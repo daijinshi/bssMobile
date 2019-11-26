@@ -1,5 +1,5 @@
 <template>
-    <div class="order">
+    <div class="order" v-loading="loading" element-loading-text="拼命加载中">
         <div class="header">
              <van-icon @click="backTo" class="back" name="arrow-left" />
              工单
@@ -7,7 +7,6 @@
         <div class="content">
             <van-tabs 
             class="details"
-            @click="changeTab"
             :active="active" 
             :border="false"
             :animated="true" >
@@ -19,30 +18,30 @@
                         <h4>门店信息</h4>
                         <div>
                             <span>品牌：</span>
-                            <span>{{detailsDatas.select_brand}}</span>
+                            <span>{{detailsDatas.select_brand || "无"}}</span>
                         </div>
                         <div>
                             <span>门店名：</span>
-                            <span>{{detailsDatas.selectstore}}</span>
+                            <span>{{detailsDatas.selectstore || "无"}}</span>
                         </div>
                         <div>
                             <span>门店位置</span>
-                            <span>{{detailsDatas.store_address}}</span>
+                            <span>{{detailsDatas.store_address || "无"}}</span>
                         </div>
                         <div>
                             <span>联系人：</span>
-                            <span>{{detailsDatas.input333}}</span>
+                            <span>{{detailsDatas.input333 || "无"}}</span>
                         </div>
                         <div>
                             <span>联系方式：</span>
-                            <span>{{detailsDatas.store_phone}}</span>
+                            <span>{{detailsDatas.store_phone || "无"}}</span>
                         </div>
                     </div>
                     <h4 class="title">报修信息</h4>
                     <div class="repair-info">
                         <div class="one">
                             <span class="label">故障现象:</span>
-                            <span>吧台主灯-不亮</span>
+                            <span>{{detailsDatas.guzhangmiaoshu || "无"}}</span>
                         </div>
                         <div class="time">
                             <span class="label">应到时间</span>
@@ -69,14 +68,19 @@
                             <img width="100%" :src="dialogImageUrl" alt="">
                         </el-dialog>
                     </div> -->
-                    <van-uploader v-model="fileList" multiple />
+                    <!-- <van-uploader v-model="fileList" multiple /> -->
+                    <div class="imgs clearfix">
+                        <div class="img" v-for="(item,index) in detailsDatas.files">
+                            <img :src="baseUrl + item.downloadPath " alt="">
+                        </div>
+                    </div>
                     <div class="footer" v-if="roleId == '4'">
                         <van-button @click="arrive" type="primary">到店确认</van-button>
                         <div class="center"></div>
                         <van-button @click="leave" type="info">离店确认</van-button>
                     </div>
                     <div class="footer" v-if="roleId == '1' || roleId == '2' || roleId == '3'">
-                        <van-button type="primary">确认完成</van-button>
+                        <van-button @click="confirm" type="primary">确认完成</van-button>
                         <div class="center"></div>
                         <van-button type="info">退出</van-button>
                     </div>
@@ -86,7 +90,7 @@
                 class="tracking" 
                 title="跟踪">
                     <van-collapse v-model="activeName" accordion>
-                        <van-collapse-item v-if="trackingDatas" :title="'单号'+trackingDatas.orderDealLogs[0].flowNo+'处理详情'" name="1">
+                        <van-collapse-item :title="'单号'+trackingDatas.flowNo+'处理详情'" name="1">
                             <div class="head">
                                 <span>报修人：</span>
                                 <span>{{headDatas.input333}}</span>
@@ -107,7 +111,7 @@
                                       </div>
                                       <div>
                                         <span>记录时间:</span>
-                                        <span>{{new Date(item.createDate)}}</span>
+                                        <span>{{format(item.createDate,"yyyy-MM-dd  HH:mm:ss")}}</span>
                                       </div>
                                       <div>
                                           <span>详情：</span>
@@ -120,7 +124,7 @@
                     </van-collapse>
                     <van-collapse v-model="activeName" accordion>
                         <van-collapse-item 
-                         v-if="trackingDatas" 
+                         v-if="trackingDatas.subApplyVos" 
                          v-for="(item,i) in trackingDatas.subApplyVos"
                          :key="item.flowNo"
                          :title="'单号'+item.flowNo+'处理详情'" 
@@ -137,7 +141,7 @@
                             </div>
                              <div class="step">
                                 <van-steps  direction="vertical" :active="active">
-                                  <van-step v-for="(item2,i) in item.orderDealLogs" :key="item2.id">
+                                  <van-step v-if="item.orderDealLogs" v-for="(item2,i) in item.orderDealLogs" :key="item2.id">
                                       <h4>{{item.createUser}}</h4>
                                       <div>
                                         <span>记录人:</span>
@@ -145,7 +149,7 @@
                                       </div>
                                       <div>
                                         <span>记录时间:</span>
-                                        <span>{{new Date(item.createDate)}}</span>
+                                        <span>{{format(item.createDate,"yyyy-MM-dd  HH:mm:ss")}}</span>
                                       </div>
                                       <div>
                                           <span>详情：</span>
@@ -175,12 +179,15 @@ export default {
                 "modelKey": "PSS_DEMO_20191010", 
                 token: ""
             },
-            detailsDatas: {},
+            detailsDatas: {
+                files: []
+            },
             fileList: [],
             loading: true,
             trackingDatas:{},
             headDatas: {},
-            roleId: ''
+            roleId: '',
+            baseUrl: "http://192.168.154.83:8088/"
         }
     },
      components:{
@@ -194,60 +201,67 @@ export default {
         backTo() {
             this.$router.go(-1);
         },
-         changeTab(name){
-            if(name == 2) {
-            }
-        },
         getDetailsDatas() {
+            this.roleId = sessionStorage.getItem('roleId')
+            console.log(sessionStorage.getItem('roleId'))
+            this.loading = true
             if(!sessionStorage.getItem('ms_username')){
                 Notify({ type: 'danger', message: '登陆失效'});
                 this.$router.push('/login') //使用编程式导航路由进行跳转
                 sessionStorage.clear()
             }
             //判断角色id
-            this.roleId = sessionStorage.getItem('roleId')
+            
             this.requestData.flowNo = this.$route.query.orderNum
             this.requestData.token = sessionStorage.getItem('ms_username')
-            this.axios.post('http://192.168.154.106:8088/api/flow/echoData',this.requestData,{headers:{"Content-Type": 'application/json;charset=UTF-8'}}).then( res => {
+            this.axios.post('api/flow/echoData',this.requestData,{headers:{"Content-Type": 'application/json;charset=UTF-8'}}).then( res => {
 				console.log(res)//用来查看接口里面的数据
 				let lg = res.data //把数据赋值给变量
 				if(lg.code && lg.code > 1000 && lg.code < 2000){
                     Notify({ type: 'danger', message: '登陆信息失效'});
                     this.$router.push('/login') //使用编程式导航路由进行跳转
                     sessionStorage.clear()
+                    this.loading = true
 				}else if(lg.code && lg.code == "0000") {
                     if(lg.data.data && lg.data.data.length < 1){
                        Notify({ type: 'primary', message: '暂无数据'})
+                       this.loading = true
                     }
                     this.dealDetailsDatas(lg.data.data,this.detailsDatas)
+                    this.detailsDatas.files = lg.data.files
                     //this.detailsDatas = lg.rows[0]
                     this.loading = false
 				}else {
                    Notify({ type: 'danger', message: '登陆异常'});
                    this.$router.push('/login') //使用编程式导航路由进行跳转
                    sessionStorage.clear()
+                   this.loading = true
                 }
            },response =>{
                console.log(response)
+               this.loading = true
            })
         },
         dealDetailsDatas(rs,data) {
             rs.forEach((item,index) => {
                 switch(item.dataKey){
                     case 'select_brand':
-                        data.select_brand = item.dataName
+                        data.select_brand = item.dataValue
                         break
                     case 'selectstore':
-                        data.selectstore = item.dataName
+                        data.selectstore = item.dataValue
                         break
                     case 'store_address':
-                        data.store_address = item.dataName
+                        data.store_address = item.dataValue
                         break
                     case 'input333':
-                        data.input333 = item.dataName
+                        data.input333 = item.dataValue
                         break
                     case 'store_phone':
-                        data.store_phone = item.dataName
+                        data.store_phone = item.dataValue
+                        break
+                    case '"guzhangmiaoshu"':
+                        data.guzhangmiaoshu = item.dataValue
                         break
                     default:
                 }
@@ -261,7 +275,7 @@ export default {
             }
             this.requestData.flowNo = this.$route.query.orderNum
             this.requestData.token = sessionStorage.getItem('ms_username')
-            this.axios.post('http://192.168.154.106:8088/api/flow/flowLog',this.requestData,{headers:{"Content-Type": 'application/json;charset=UTF-8'}}).then( res => {
+            this.axios.post('api/flow/flowLog',this.requestData,{headers:{"Content-Type": 'application/json;charset=UTF-8'}}).then( res => {
 				console.log(res)//用来查看接口里面的数据
 				let lg = res.data //把数据赋值给变量
 				if(lg.code && lg.code > 1000 && lg.code < 2000){
@@ -290,26 +304,66 @@ export default {
               rs.forEach((item,index) => {
                 switch(item.dataKey){
                     case 'baoxiushijian':
-                        data.select_brand = item.dataName
+                        data.select_brand = item.dataValue
                         break
                     case 'guzhangmiaoshu':
-                        data.selectstore = item.dataName
+                        data.selectstore = item.dataValue
                         break
                     case 'input333':
-                        data.input333 = item.dataName
+                        data.input333 = item.dataValue
                         break
                     default:
                 }
             });
         },
         arrive() {
-            this.axios.post('http://192.168.154.106:8088/api/flow/arriveTime',this.requestData,{headers:{"Content-Type": 'application/json;charset=UTF-8'}}).then( res => {
+            this.axios.post('api/flow/arriveTime',this.requestData,{headers:{"Content-Type": 'application/json;charset=UTF-8'}}).then( res => {
 						console.log(res)//用来查看接口里面的数据
 						let lg = res.data //把数据赋值给变量
-						if(lg.data && lg.data.length != 0){
+						if(lg.code && lg.code > 1000 && lg.code < 2000){
+                            sessionStorage.removeItem("ms_username")
+                            this.getToken()
+						}else if(lg.code && lg.code == "0000") {
+                            Notify({ type: 'success', message: '提交成功'})
                             this.loading = false
-						}else if(lg.code >= 1000 && lg.code < 2000) {
+						}else {
+                           this.$router.push("/login")
                            sessionStorage.removeItem("ms_username")
+                           Notify('登陆异常')
+                        }
+           },response =>{
+               console.log(response)
+           })
+        },
+        leave(){
+            this.axios.post('api/flow/leaveTime',this.requestData,{headers:{"Content-Type": 'application/json;charset=UTF-8'}}).then( res => {
+						console.log(res)//用来查看接口里面的数据
+						let lg = res.data //把数据赋值给变量
+						if(lg.code && lg.code > 1000 && lg.code < 2000){
+                            sessionStorage.removeItem("ms_username")
+                            this.getToken()
+						}else if(lg.code && lg.code == "0000") {
+                           Notify({ type: 'success', message: '提交成功'})
+                           this.loading = false
+						}else {
+                           this.$router.push("/login")
+                           sessionStorage.removeItem("ms_username")
+                           Notify('登陆异常')
+                        }
+           },response =>{
+               console.log(response)
+           })
+        },
+        confirm() {
+            this.axios.post('api/flow/pssSubComplete',this.requestData,{headers:{"Content-Type": 'application/json;charset=UTF-8'}}).then( res => {
+						console.log(res)//用来查看接口里面的数据
+						let lg = res.data //把数据赋值给变量
+						if(lg.code && lg.code > 1000 && lg.code < 2000){
+                            sessionStorage.removeItem("ms_username")
+                            this.getToken()
+						}else if(lg.code && lg.code == "0000") {
+                           Notify({ type: 'success', message: '提交成功'})
+                           this.loading = false
 						}else {
                            this.$router.push("/login")
                            sessionStorage.removeItem("ms_username")
@@ -320,7 +374,7 @@ export default {
            })
         },
         getToken() {
-            this.axios.post('http://192.168.154.106:8088/api/token',this.loginData,{headers:{"Content-Type": 'application/json;charset=UTF-8'}}).then( res => {
+            this.axios.post('api/token',this.loginData,{headers:{"Content-Type": 'application/json;charset=UTF-8'}}).then( res => {
 				let lg = res.data //把数据赋值给变量
 				if(lg.code == "0000"){
                     sessionStorage.removeItem('ms_username')//设置拦截，可以用cookie等，在控制台中的Application中查看
@@ -333,7 +387,33 @@ export default {
                 },response =>{
                     console.log(response)
             })
-        }
+        },
+        format(time, format){
+            var t = new Date(time);
+            var tf = function(i){return (i < 10 ? '0' : '') + i};
+            return format.replace(/yyyy|MM|dd|HH|mm|ss/g, function(a){
+                switch(a){
+                    case 'yyyy':
+                        return tf(t.getFullYear());
+                        break;
+                    case 'MM':
+                        return tf(t.getMonth() + 1);
+                        break;
+                    case 'mm':
+                        return tf(t.getMinutes());
+                        break;
+                    case 'dd':
+                        return tf(t.getDate());
+                        break;
+                    case 'HH':
+                        return tf(t.getHours());
+                        break;
+                    case 'ss':
+                        return tf(t.getSeconds());
+                        break;
+                }
+            })
+        },
     }
 }
 </script>
@@ -349,7 +429,7 @@ export default {
             font-size: .4rem /* 30/75 */;
             text-align: center;
             color: #fff;
-            background: #f99;
+            background: #33cc99;
             z-index: 999;
             .back {
                 position: absolute;
@@ -396,11 +476,11 @@ export default {
                     color: #fff;
                     h4 {
                         border-bottom: 1PX solid #eee;
-                        padding: 5px 20px;
+                        padding: 5px 3%;
                         font-size: 14px;
                     }
                     &>div {
-                        padding: 5px 20px;
+                        padding: 5px 4%;
                         span:nth-child(1) {
                             min-width: 20%;
                             display: inline-block;
@@ -410,11 +490,11 @@ export default {
                 .title {
                     height: .8rem /* 60/75 */;
                     line-height: .8rem /* 60/75 */;
-                    padding-left: .533333rem /* 40/75 */;
+                    padding-left: 3%;
                     border-bottom: 1px solid #ccc;
                 }
                 .repair-info {
-                    padding: .266667rem /* 20/75 */ .533333rem /* 40/75 */;
+                    padding: 10px 4%;
                     // .time {
                     //     display: flex;
                     //     .in-time {
@@ -445,6 +525,20 @@ export default {
                 }
                 .repair-info > div {
                     padding: .133333rem /* 10/75 */ 0;
+                }
+                .imgs {
+                    padding: 4%;
+                    .img {
+                        width: 23%;
+                        height: 60px;
+                        overflow: hidden;
+                        margin-right: 2%;
+                        margin-bottom: 2%;
+                        float: left;
+                        img {
+                            width: 100%;
+                        }
+                    }
                 }
                 .footer {
                     position: absolute;

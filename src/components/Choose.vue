@@ -1,5 +1,5 @@
 <template>
-    <div class="choose">
+    <div class="choose"  element-loading-text="拼命加载中">
         <div class="header">
             <van-icon @click="backTo" class="back" name="arrow-left" />
             <div class="title">报修筛选</div>
@@ -27,65 +27,68 @@
                 </div>
             </div>
             <van-button @click="search" class="submit" type="info">确认</van-button>
-            <div class="warranty">
-                <div  
-                v-loading="loading"
-                :key="item.ID"
-                v-for="(item,i) in chooseDatas" 
-                class="item">
-                    <h4 class="item-head">
-                        <span class="sequence">{{i+1}}</span>
-                        <span>{{item.FLOW_NO}}</span>
-                        <span @click="goDetail(item.FLOW_NO)" class="detailed">查看详细</span>
-                    </h4>
-                    <div class="item-content">
-                        <div class="one">
-                            <span>报修人</span>
-                            <span>{{item.input333}}</span>
-                        </div>
-                        <div class="two">
-                            <span>单位</span>
-                            <span>信息部门域以俄语的回复</span>
-                        </div>
-                        <div class="three">
-                            <span>电话</span>
-                            <span>{{item.store_phone}}</span>
-                        </div>
-                        <div class="four">
-                            <span>园区</span>
-                            <span>杭州余杭区</span>
-                        </div>
-                    </div>
-                    <div class="item-foot">
-                        <div class="left">
-                            <div class="in-left">
-                                <img src="../assets/images/11.png" alt="">
+            <div class="warranty" >
+                 <van-pull-refresh v-model="isLoading" @refresh="onRefresh">                
+                     <van-list v-model="loading" :finished="finished" @load="onLoad">     
+                        <div  
+                        :key="i"
+                        v-for="(item,i) in chooseDatas" 
+                        class="item">
+                            <h4 class="item-head">
+                                <span class="sequence">{{i+1}}</span>
+                                <span>{{item.FLOW_NO}}</span>
+                                <span @click="goDetail(item.FLOW_NO)" class="detailed">查看详细</span>
+                            </h4>
+                            <div class="item-content">
+                                <div class="one">
+                                    <span>报修人</span>
+                                    <span>{{item.input333 || "无"}}</span>
+                                </div>
+                                <div class="two">
+                                    <span>单位</span>
+                                    <span>信息部门域以俄语的回复</span>
+                                </div>
+                                <div class="three">
+                                    <span>电话</span>
+                                    <span>{{item.store_phone || "无"}}</span>
+                                </div>
+                                <div class="four">
+                                    <span>园区</span>
+                                    <span>杭州余杭区</span>
+                                </div>
                             </div>
-                            <div class="in-right">
-                                <div class="top">处理状态</div>
-                                <div class="up">未处理</div>
+                            <div class="item-foot">
+                                <div class="left">
+                                    <div class="in-left">
+                                        <img src="../assets/images/11.png" alt="">
+                                    </div>
+                                    <div class="in-right">
+                                        <div class="top">处理状态</div>
+                                        <div class="up">未处理</div>
+                                    </div>
+                                </div>
+                                <div class="center">
+                                    <div class="in-left">
+                                        <img src="../assets/images/12.png" alt="">
+                                    </div>
+                                    <div class="in-right">
+                                        <div class="top">提交时间</div>
+                                        <div class="up">{{format(item.CREATE_DATE, 'yyyy-MM-dd')}}</div>
+                                    </div>
+                                </div>
+                                <div class="right">
+                                    <div class="in-left">
+                                        <img src="../assets/images/13.png" alt="">
+                                    </div>
+                                    <div class="in-right">
+                                        <div class="top">评价状态</div>
+                                        <div class="up">未评价</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="center">
-                            <div class="in-left">
-                                <img src="../assets/images/12.png" alt="">
-                            </div>
-                            <div class="in-right">
-                                <div class="top">提交时间</div>
-                                <div class="up">{{format(item.CREATE_DATE, 'yyyy-MM-dd')}}</div>
-                            </div>
-                        </div>
-                        <div class="right">
-                            <div class="in-left">
-                                <img src="../assets/images/13.png" alt="">
-                            </div>
-                            <div class="in-right">
-                                <div class="top">评价状态</div>
-                                <div class="up">未评价</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                    </van-list> 
+                </van-pull-refresh>
             </div>
         </div>
     </div>
@@ -102,22 +105,30 @@ export default {
             },
             date: "date",
             id: 1,
-            chooseDatas: {},
+            chooseDatas: [],
             newChooseDatas: [],
             requestData: {
-               "modelKey": "PSS_DEMO_20191010",
-               token:'' 
+                "modelKey": "PSS_DEMO_20191010",
+                token:'' ,
+                size: 10,
+                page: 0,
+                callTag: 1,
+                columns: "input333,store_phone,select_brand,selectstore"
             },
             repairNum: '',
-            loading: true,
-            loginData: {}
+            loading: false,
+            upLoading: false,
+            isLoading: false,
+            loginData: {},
+            totalPage: 0,
+            finished: false,
         }
     },
     components:{
         VantFieldDate
     },
     created() {
-        this.getChooseData()
+        //this.getChooseData()
     },
     methods: {
         backTo() {
@@ -131,6 +142,53 @@ export default {
                 }
             })
         },
+        onLoad() {            
+             setTimeout(() => {                
+                if(!sessionStorage.getItem('ms_username')){
+                    Notify({ type: 'danger', message: '登陆失效'});
+                    this.$router.push('/login') //使用编程式导航路由进行跳转
+                    sessionStorage.clear()
+                }
+                this.requestData.page = this.requestData.page + 1
+                this.requestData.token = sessionStorage.getItem('ms_username')
+                this.axios.post('api/flow/flowIndexPage',this.requestData,{headers:{"Content-Type": 'application/json;charset=UTF-8'}}).then( res => {
+			        console.log(res)//用来查看接口里面的数据
+                    let lg = res.data //把数据赋值给变量
+			        if(lg.code && lg.code > 1000 && lg.code < 2000) {
+                        this.getToken()
+                        return
+                    } else if(lg.code && lg.code == "0000"){
+                        this.chooseDatas = this.chooseDatas.concat(lg.data.rows);
+                        this.upLoading = false;//关闭上拉刷新效果
+                        this.totalPage = Math.round(lg.data.total / this.requestData.size)
+                        this.isLoading = false; //关闭下拉刷新效果
+                        this.loading = false
+                        this.requestData.page++;
+                        //判断当前page是否大于总page
+                        if (this.requestData.page >= this.totalPage) {
+                            this.finished = true;
+                            Notify('暂无数据')//账号密码错误时的提示 
+                        }
+                    }else {
+                        Notify('登陆异常')//账号密码错误时的提示
+                        this.loading = false
+                        this.$router.push('/login') //使用编程式导航路由进行跳转
+                        sessionStorage.clear()
+                    }
+                },response =>{
+                   console.log(response)
+                   this.loading = false
+                })            
+            }, 500);       
+        },
+        onRefresh() {           
+            let self = this;            
+            setTimeout(() => {                
+                self.totalPage = 0;                
+                self.pageNumber = 0;                
+                self.getChooseData(); //加载数据           
+            }, 500);        
+        },
         getChooseData() {
             if(!sessionStorage.getItem('ms_username')){
                 Notify({ type: 'danger', message: '登陆失效'});
@@ -138,7 +196,7 @@ export default {
                 sessionStorage.clear()
             }
             this.requestData.token = sessionStorage.getItem('ms_username')
-            this.axios.post('http://192.168.154.106:8088/api/flow/flowIndexPage',this.requestData,{headers:{"Content-Type": 'application/json;charset=UTF-8'}}).then( res => {
+            this.axios.post('api/flow/flowIndexPage',this.requestData,{headers:{"Content-Type": 'application/json;charset=UTF-8'}}).then( res => {
 				console.log(res)//用来查看接口里面的数据
                 let lg = res.data //把数据赋值给变量
                 if(lg.code && lg.code > 1000 && lg.code < 2000) {
@@ -149,6 +207,8 @@ export default {
                        Notify({ type: 'danger', message: '暂无数据'})
                     }
                     this.chooseDatas = lg.data.rows
+                    this.totalPage = Math.round(lg.data.total / this.chooseDatas.size)
+                    this.isLoading = false; //关闭下拉刷新效果
                     this.loading = false
                 }else {
                     Notify({ type: 'danger', message: '登陆异常'});
@@ -160,8 +220,36 @@ export default {
             })
         },
         search() {
-            debugger
-            this.loading = true
+            // if(!sessionStorage.getItem('ms_username')){
+            //     Notify({ type: 'danger', message: '登陆失效'});
+            //     this.$router.push('/login') //使用编程式导航路由进行跳转
+            //     sessionStorage.clear()
+            // }
+            // this.requestData.token = sessionStorage.getItem('ms_username')
+            // this.axios.post('api/flow/flowIndexPage',this.requestData,{headers:{"Content-Type": 'application/json;charset=UTF-8'}}).then( res => {
+			// 	console.log(res)//用来查看接口里面的数据
+            //     let lg = res.data //把数据赋值给变量
+            //     if(lg.code && lg.code > 1000 && lg.code < 2000) {
+            //         this.getToken()
+            //         return
+            //     } else if(lg.code && lg.code == "0000"){
+            //         if(lg.data.rows && lg.data.rows.length < 1){
+            //            Notify({ type: 'danger', message: '暂无数据'})
+            //         }
+            //         this.chooseDatas = lg.data.rows
+            //         this.totalPage = Math.round(lg.data.total / this.chooseDatas.size)
+            //         this.isLoading = false; //关闭下拉刷新效果
+            //         this.loading = false
+            //     }else {
+            //         Notify({ type: 'danger', message: '登陆异常'});
+            //         this.$router.push('/login') //使用编程式导航路由进行跳转
+            //         sessionStorage.clear()
+            //     }
+            // },response =>{
+            //    console.log(response)
+            // })
+
+            this.uploading = true
             this.newChooseDatas= []
             console.log(this.formData,this.repairNum)
             this.chooseDatas.forEach((item,index) => {
@@ -170,7 +258,6 @@ export default {
                          if(item.FLOW_NO == this.repairNum) {
                             this.chooseDatas = []
                             this.chooseDatas.push(item)
-                            this.loading = false
                             return
                         }
                     }
@@ -178,23 +265,19 @@ export default {
                     if(item.CREATE_DATE >= this.formData.beginData &&  item.CREATE_DATE <= this.formData.endData){
                         this.chooseDatas = []
                         this.newChooseDatas.push(item)
-                        this.loading = false
                     }
                 }else if(!this.formData.beginData && !this.formData.endData && this.repairNum){
                     if(item.FLOW_NO == this.repairNum) {
                         this.chooseDatas = []
                         this.chooseDatas.push(item)
-                        this.loading = false
                         return
                     }
                 }else {
-                    Notify('未找到匹配的工单')//账号密码错误时的提示
-                    this.loading = false
+                    Notify('未找到匹配的工单')
                 }
             });
             if(this.newChooseDatas.length > 0){
                 this.chooseDatas =  this.newChooseDatas
-                this.loading = false
             }
         },
         format(time, format){
@@ -225,7 +308,7 @@ export default {
         },
         getToken() {
             this.loginData = JSON.parse(sessionStorage.getItem("loginData"))
-            this.axios.post('http://192.168.154.106:8088/api/token',this.loginData,{headers:{"Content-Type": 'application/json;charset=UTF-8'}}).then( res => {
+            this.axios.post('api/token',this.loginData,{headers:{"Content-Type": 'application/json;charset=UTF-8'}}).then( res => {
 				let lg = res.data 
 				if(lg.code == "0000"){
                     sessionStorage.removeItem('ms_username')
@@ -389,6 +472,9 @@ export default {
                         border-right: none;
                     }
                 }
+            }
+            .van-pull-refresh /deep/ .van-pull-refresh__head {
+                top: -40px;
             }
         }
     }

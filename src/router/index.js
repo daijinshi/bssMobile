@@ -24,10 +24,10 @@ export default new Router({
       name: "repairApply",
       component: () => import(/* webpackChunkName: "dashboard" */ '@/components/RepairApply.vue'),
     },
-    {
-      path: '/details',
-      component: () => import(/* webpackChunkName: "dashboard" */ '@/components/Details.vue'),
-    },
+    // {
+    //   path: '/details',
+    //   component: () => import(/* webpackChunkName: "dashboard" */ '@/components/Details.vue'),
+    // },
     {
       path: '/repairOrder',
       component: () => import(/* webpackChunkName: "dashboard" */ '@/components/RepairOrder.vue'),

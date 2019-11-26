@@ -2,14 +2,26 @@
     <div class="wrapper">
         <div class="header">
             <div class="logo">
-                <img src="../../assets/images/1.png" alt="">
+                <img src="../../assets/images/logo.png" alt="">
             </div>
-            <div class="title">Service System</div>
+            <div class="title">客户服务管理平台</div>
         </div>
         <div class="content">
-            <div class="banner"></div>
+            <div class="banner">
+                <van-swipe :autoplay="3000" indicator-color="white">
+                    <van-swipe-item>
+                        <img src="../../assets/images/banner/2.png" alt="">
+                    </van-swipe-item>
+                    <van-swipe-item>
+                         <img src="../../assets/images/banner/4.png" alt="">
+                    </van-swipe-item>
+                    <van-swipe-item>
+                        <img src="../../assets/images/banner/6.png" alt="">
+                    </van-swipe-item>
+                </van-swipe>
+            </div>
             <div class="gongge">
-                <div class="left repair-apply" @click="repairApply"><img src="../../assets/images/2.png" alt=""></div>
+                <div class="left repair-apply" @click="repairApply"><img src="../../assets/images/222.png" alt=""></div>
                 <div class="right">
                     <div @click="related" class="one"><img src="../../assets/images/3.png" alt=""></div>
                     <div class="br"></div>
@@ -25,13 +37,8 @@
                 active-color="#07c160"
                 inactive-color="#000"
                 >
-                <van-tabbar-item icon="wap-home-o">
-                       <router-link :to="{name: 'home'}"> 首页 </router-link>
-                </van-tabbar-item>
-               
-                <van-tabbar-item icon="setting-o">
-                    <router-link :to="{name: 'repairApply'}"> 报修 </router-link>
-                    </van-tabbar-item>
+                <van-tabbar-item @click="goHome" icon="wap-home-o"> 首页</van-tabbar-item>
+                <van-tabbar-item @click="repairApply" icon="setting-o">报修 </van-tabbar-item>
                 <van-tabbar-item icon="passed">确认</van-tabbar-item>
                 <van-tabbar-item icon="user-o">我的</van-tabbar-item>
             </van-tabbar>
@@ -39,13 +46,15 @@
     </div>
 </template>
 <script>
+//import  Swipe from 'vant/lib/swipe'
+//import  SwipeItem  from 'vant/lib/swipeItem'
 export default {
      data() {
         return {
             active: 0,
             params: {
             "modelKey": "PSS_DEMO_20191010",
-            "token": "1"
+            "token": "1",
         }
     }
   },
@@ -55,6 +64,9 @@ export default {
       },
       repairApply() {
            this.$router.push({path:'/repairApply'})
+      },
+      goHome() {
+          this.$router.push({path:'/'})
       },
       related(){
         // this.axios.post("http://192.168.100.108:8088/api/flow/flowIndexPage",params).then(res => {
@@ -67,7 +79,7 @@ export default {
 </script>>
 <style lang="less" scoped>
     .wrapper {
-        background: #eee;
+        background: #fff;
         padding-top: 7vh;
     }
     .header {
@@ -101,7 +113,7 @@ export default {
         .banner {
             width: 100%;
             margin-top: .266667rem /* 20/75 */;
-            height: 4rem /* 300/75 */;
+            //height: 4rem /* 300/75 */;
             border-radius: .133333rem /* 10/75 */;
             background: #dffdff;
         }

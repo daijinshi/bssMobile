@@ -41,15 +41,15 @@ export default {
         Notify('请输入密码');
         return
       }
-        this.axios.post('http://192.168.154.106:8088/api/token',this.loginData,{headers:{"Content-Type": 'application/json;charset=UTF-8'}}).then( res => {
+        this.axios.post('api/token',this.loginData,{headers:{"Content-Type": 'application/json;charset=UTF-8'}}).then( res => {
 						console.log(res)//用来查看接口里面的数据
 						let lg = res.data //把数据赋值给变量
 						if(lg.code == "0000"){
               sessionStorage.setItem('ms_username',lg.data.token)//设置拦截，可以用cookie等，在控制台中的Application中查看
-              sessionStorage.setItem('roleId',this.roleId)
+              sessionStorage.setItem('roleId',lg.data.roleId)
               sessionStorage.setItem('loginData', JSON.stringify(this.loginData))
+              this.$router.push('/') //使用编程式导航路由进行跳转
 							Notify({ type: 'success', message: '登陆成功'});//登录成功的提示
-							this.$router.push('/') //使用编程式导航路由进行跳转
 						}else {
                Notify('登陆失败')//账号密码错误时的提示
                sessionStorage.clear()
